@@ -76,9 +76,6 @@ pipeline {
                 DOCKER_IMAGE = "daggu1997/spring-boot-app:${BUILD_NUMBER}"
                 REGISTRY_CREDENTIALS = credentials('docker')
             }
-            when {
-                branch 'main'
-            }
             steps {
                 script {
                     sh 'docker build -t ${DOCKER_IMAGE} .'
