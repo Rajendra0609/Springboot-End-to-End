@@ -1,34 +1,30 @@
 pipeline {
     agent any
-    tools{
+    tools {
         maven 'maven'
     }
     environment {
-        SCANNER_HOME=tool 'sonarqube'
+        SCANNER_HOME = tool 'sonarqube'
         TRIVY_TIMEOUT = '10m'
     }
     stages {
-        //stage('git checkout') {
-            //steps{
-                //git branch: 'dev/chow', credentialsId: 'github', url: 'https://github.com/Rajendra0609/Springboot-End-to-End.git'
-            //}
-        //}
         stage('mvn compile') {
-            steps{
+            steps {
                 sh 'mvn clean compile'
             }
         }
         stage('OWASP FS SCAN') {
             steps {
                 script {
-            // Run OWASP Dependency Check
-            dependencyCheck additionalArguments: '--scan ./ --format HTML', odcInstallation: 'dpcheck'
+                    // Run OWASP Dependency Check
+                    dependencyCheck additionalArguments: '--scan ./ --format HTML', odcInstallation: 'dpcheck'
                     
+                    // Publish the Dependency Check report
+                    dependencyCheckPublisher pattern: '**/dependency-check-report.html'
+                    
+                    // Archive the report file for access after the build
+                    archiveArtifacts artifacts: '**/dependency-check-report.html'
                 }
-        // Publish the Dependency Check report
-            dependencyCheckPublisher pattern: '**/dependency-check-report.html'
-        // Archive the report file for access after the build
-            archiveArtifacts artifacts: '**/dependency-check-report.html'
             }
         }
         stage('Lynis Security Scan') {
@@ -36,30 +32,32 @@ pipeline {
                 script {
                     // Execute the Lynis security scan and convert the output to HTML
                     sh 'lynis audit system | ansi2html > lynis-report.html'
+                    
                     // Display the absolute path of the report in the Jenkins console output
                     def reportPath = "${env.WORKSPACE}/lynis-report.html"
                     echo "Chemin du rapport Lynis : ${reportPath}"
+                    
                     // Archive the report file for access after the build
                     archiveArtifacts artifacts: 'lynis-report.html'
                 }
             }
         }
-        stage("Sonarqube Analysis "){
+        stage('SonarQube Analysis') {
             when {
                 branch 'main'
             }
-            steps{
+            steps {
                 withSonarQubeEnv('sonarqube') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=springboot \
+                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=springboot \
                     -Dsonar.java.binaries=. \
-                    -Dsonar.projectKey=Springboot '''
+                    -Dsonar.projectKey=Springboot'''
                 }
             }
         }
-        stage('Build'){
-            steps{
-                sh "mvn clean"
-                sh "mvn package -DskipTests=true "
+        stage('Build') {
+            steps {
+                sh 'mvn clean'
+                sh 'mvn package -DskipTests=true'
             }
         }
         stage('Archive Artifacts') {
@@ -68,13 +66,12 @@ pipeline {
                 archiveArtifacts artifacts: '**/target/*.jar', allowEmptyArchive: true
             }
         }
-        stage('Test'){
-            steps{
-                sh "mvn test"
+        stage('Test') {
+            steps {
+                sh 'mvn test'
             }
         }
         stage('Build & Push Docker Image') {
-            // Credentials of DockerHub which stored in the Jenkins Credentials
             environment {
                 DOCKER_IMAGE = "daggu1997/spring-boot-app:${BUILD_NUMBER}"
                 REGISTRY_CREDENTIALS = credentials('docker')
@@ -84,7 +81,6 @@ pipeline {
                 branch 'dev/chow'
             }
             steps {
-                // Building the Docker Image and Pushing it... After Pushing, make sure remove the Image because the it will take more storage
                 script {
                     sh 'docker build -t ${DOCKER_IMAGE} .'
                     def dockerImage = docker.image("${DOCKER_IMAGE}")
@@ -95,8 +91,7 @@ pipeline {
                 }
             }
         }
-        stage('Updating Deployment File') {
-            // GIT Repo and username
+        stage('Update Deployment File') {
             environment {
                 GIT_REPO_NAME = "Springboot-end-to-end"
                 GIT_USER_NAME = "Rajendra0609"
@@ -105,23 +100,22 @@ pipeline {
                 branch 'main'
             }
             steps {
-                // Replacing the previous BUILD_NUMBER with NEW_BUILD_NUMBER and pushing the changes to Github
                 withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN')]) {
                     script {
                         def releaseTag = "v.0.${BUILD_NUMBER}.0"
-                    sh '''
-                        git config user.email "rajendra.daggubati@gmail.com"
-                        git config user.name "Rajendra0609"
-                        git tag -a ${releaseTag} -m "Release ${releaseTag}"
-                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} ${releaseTag}
-                        BUILD_NUMBER=${BUILD_NUMBER}
-                        imageTag=$(grep -oP '(?<=spring-boot-app:)[^ ]+' deployment.yml)
-                        sed -i "s/spring-boot-app:${imageTag}/spring-boot-app:${BUILD_NUMBER}/" deployment.yml
-                        git add deployment.yml
-                        git commit -m "chore:Update deployment Image to version \${BUILD_NUMBER}"
-                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-                    '''
-                       echo "Created and pushed tag: ${releaseTag}"
+                        sh '''
+                            git config user.email "rajendra.daggubati@gmail.com"
+                            git config user.name "Rajendra0609"
+                            git tag -a ${releaseTag} -m "Release ${releaseTag}"
+                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} ${releaseTag}
+                            BUILD_NUMBER=${BUILD_NUMBER}
+                            imageTag=$(grep -oP '(?<=spring-boot-app:)[^ ]+' deployment.yml)
+                            sed -i "s/spring-boot-app:${imageTag}/spring-boot-app:${BUILD_NUMBER}/" deployment.yml
+                            git add deployment.yml
+                            git commit -m "chore: Update deployment Image to version ${BUILD_NUMBER}"
+                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                        '''
+                        echo "Created and pushed tag: ${releaseTag}"
                     }
                 }
             }
@@ -129,9 +123,7 @@ pipeline {
         stage('Cleanup Workspace') {
             steps {
                 cleanWs()
-                sh """
-                echo "Cleaned Up Workspace For Project"
-                """
+                sh 'echo "Cleaned Up Workspace For Project"'
             }
         }
     }
