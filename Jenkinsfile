@@ -101,26 +101,26 @@ pipeline {
     steps {
         withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN')]) {
             script {
-                def releaseTag = "v0.${BUILD_NUMBER}.0" // Corrected tag format
+                def releaseTag = "v0.${BUILD_NUMBER}.0"
+                env.RELEASE_TAG = releaseTag // Export the variable to the shell
                 sh '''
                     git config user.email "rajendra.daggubati@gmail.com"
                     git config user.name "Rajendra0609"
-                    git tag -a ${releaseTag} -m "Release ${releaseTag}"
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} ${releaseTag}
-                    
+                    git tag -a ${RELEASE_TAG} -m "Release ${RELEASE_TAG}"
+                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} ${RELEASE_TAG}
+    
                     # Update deployment file with new image tag
                     imageTag=$(grep -oP '(?<=spring-boot-app:)[^ ]+' deployment.yml)
                     sed -i "s/spring-boot-app:${imageTag}/spring-boot-app:${BUILD_NUMBER}/" deployment.yml
                     git add deployment.yml
                     git commit -m "chore: Update deployment Image to version ${BUILD_NUMBER}"
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:${releaseTag}
+                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:${RELEASE_TAG}
                 '''
                 echo "Created and pushed tag: ${releaseTag}"
             }
         }
     }
 }
-
         stage('Cleanup Workspace') {
             steps {
                 cleanWs()
