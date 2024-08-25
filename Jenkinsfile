@@ -44,7 +44,7 @@ pipeline {
         }
         stage('SonarQube Analysis') {
             when {
-                branch 'main'
+                branch 'dev/chow'
             }
             steps {
                 withSonarQubeEnv('sonarqube') {
@@ -77,7 +77,6 @@ pipeline {
                 REGISTRY_CREDENTIALS = credentials('docker')
             }
             when {
-                branch 'main'
                 branch 'dev/chow'
             }
             steps {
@@ -97,7 +96,7 @@ pipeline {
                 GIT_USER_NAME = "Rajendra0609"
             }
             when {
-                branch 'main'
+                branch 'dev/chow'
             }
             steps {
                 withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN')]) {
