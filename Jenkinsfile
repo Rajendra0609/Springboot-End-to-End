@@ -8,11 +8,11 @@ pipeline {
         TRIVY_TIMEOUT = '10m'
     }
     stages {
-        stage('git checkout') {
-            steps{
-                git branch: 'dev/chow', credentialsId: 'github', url: 'https://github.com/Rajendra0609/Springboot-End-to-End.git'
-            }
-        }
+        //stage('git checkout') {
+            //steps{
+                //git branch: 'dev/chow', credentialsId: 'github', url: 'https://github.com/Rajendra0609/Springboot-End-to-End.git'
+            //}
+        //}
         stage('mvn compile') {
             steps{
                 sh 'mvn clean compile'
