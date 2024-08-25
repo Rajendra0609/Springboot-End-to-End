@@ -44,7 +44,7 @@ pipeline {
         }
         stage('SonarQube Analysis') {
             when {
-                branch 'dev/chow'
+                branch 'main'
             }
             steps {
                 withSonarQubeEnv('sonarqube') {
@@ -77,7 +77,7 @@ pipeline {
                 REGISTRY_CREDENTIALS = credentials('docker')
             }
             when {
-                branch 'dev/chow'
+                branch 'main'
             }
             steps {
                 script {
@@ -96,7 +96,7 @@ pipeline {
         GIT_USER_NAME = "Rajendra0609"
     }
     when {
-        branch 'dev/chow'
+        branch 'main'
     }
     steps {
         withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN')]) {
@@ -114,7 +114,7 @@ pipeline {
                     sed -i "s/spring-boot-app:${imageTag}/spring-boot-app:${BUILD_NUMBER}/" deployment.yml
                     git add deployment.yml
                     git commit -m "chore: Update deployment Image to version ${BUILD_NUMBER}"
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:${RELEASE_TAG}
+                    git push --force https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:${RELEASE_TAG}
                 '''
                 echo "Created and pushed tag: ${releaseTag}"
             }
