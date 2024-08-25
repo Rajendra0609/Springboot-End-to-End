@@ -90,6 +90,8 @@ pipeline {
                 }
             }
         }
+
+
         stage('Update Deployment File and Create a tag') {
     environment {
         GIT_REPO_NAME = "Springboot-end-to-end"
@@ -102,13 +104,17 @@ pipeline {
         withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN')]) {
             script {
                 def releaseTag = "v0.${BUILD_NUMBER}.0"
-                env.RELEASE_TAG = releaseTag
+
+                env.RELEASE_TAG = releaseTag // Export the variable to the shell
+
+                
                 sh '''
                     git config user.email "rajendra.daggubati@gmail.com"
                     git config user.name "Rajendra0609"
                     git tag -a ${RELEASE_TAG} -m "Release ${RELEASE_TAG}"
+
                     git push --force https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} ${RELEASE_TAG}
-                    
+                  
                     # Update deployment file with new image tag
                     imageTag=$(grep -oP '(?<=spring-boot-app:)[^ ]+' deployment.yml)
                     sed -i "s/spring-boot-app:${imageTag}/spring-boot-app:${BUILD_NUMBER}/" deployment.yml
@@ -121,6 +127,7 @@ pipeline {
         }
     }
 }
+
        stage('Cleanup Workspace') {
             steps {
                 cleanWs()
